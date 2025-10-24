@@ -1,0 +1,40 @@
+services:
+  pg:
+    image: postgres:16-alpine
+    ports:
+      - "7000:5432"
+    environment:
+        POSTGRES_USER: docker
+        POSTGRES_PASSWORD: docker
+        POSTGRES_DB: clarice
+    volumes:
+      - pg-data:/var/lib/postgresql/pg-data
+
+  dragonfly:
+    image: 'docker.dragonflydb.io/dragonflydb/dragonfly'
+    ports:
+      - "6379:6379"
+    ulimits:
+      memlock: -1
+    volumes:
+      - dragonflydata:/data
+    command: ["--proactor_threads=4"]
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    ports:
+      - "9000:9000" # API S3
+      - "9001:9001" # Web
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: password123
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+
+volumes:
+  pg-data:
+  dragonflydata:
+  minio-data:

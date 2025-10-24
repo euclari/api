@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  call-reusable-workflow:
+    # Aponta para o molde neste repositório e na branch 'main'
+    uses: euclari/Workflows/.github/workflows/reusable-ci-cd.yaml@main
+    
+    with:
+      # --- Configurações para Projetos Bun (pode ser customizado para npm/pnpm/yarn) ---
+      lint-command: 'bun run lint'
+
+      # --- Configuração de Testes (Obrigatório) ---
+      has-tests: true 
+      test-command: 'bun test'
