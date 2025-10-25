@@ -15,6 +15,9 @@ export enum ErrorCode {
 	UnknownSession,
 	ExpiredSession,
 	SessionsLimitReached,
+
+	// Connections
+	UnknownConnection = 3001,
 }
 
 export const ERROR_MESSAGES: Record<ErrorCode, string> = {
@@ -35,4 +38,6 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
 	[ErrorCode.SessionsLimitReached]:
 		'Sessions limit for this account has been reached',
 	[ErrorCode.ExpiredSession]: 'Your session expired',
+
+	[ErrorCode.UnknownConnection]: 'Unknown connection',
 };

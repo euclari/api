@@ -11,8 +11,20 @@ export const docs = () =>
 			},
 			tags: [
 				{
+					name: '@me',
+					description: 'Routes related to the user current session',
+				},
+				{
 					name: 'Sessions',
 					description: 'Routes related to user sessions',
+				},
+				{
+					name: 'Connections',
+					description: 'Routes related to connections in an users account',
+				},
+				{
+					name: 'Security',
+					description: 'Route related to security of an account',
 				},
 			],
 		},
