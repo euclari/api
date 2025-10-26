@@ -1,5 +1,7 @@
+import { cron, Patterns } from '@elysiajs/cron';
 import { Elysia, ElysiaCustomStatusResponse } from 'elysia';
 import { env, IS_DEVELOPMENT } from '@/env';
+import { SessionService } from '@/modules/sessions/service';
 import { secure } from '@/plugins/auth';
 import { docs } from '@/plugins/docs';
 import { ErrorCode, exception } from '@/shared/errors';
@@ -25,6 +27,16 @@ export const createApp = () =>
 		.decorate('readyAt', Date.now())
 		.use(secure)
 		.use(docs())
+		.use(
+			cron({
+				catch: true,
+				name: 'cron',
+				async run() {
+					await SessionService.sweep({});
+				},
+				pattern: Patterns.EVERY_HOUR,
+			}),
+		)
 		.error({
 			FAST_JWT_EXPIRED: Error,
 			FAST_JWT_MALFORMED: Error,

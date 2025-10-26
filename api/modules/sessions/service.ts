@@ -1,5 +1,6 @@
 import { redis } from 'bun';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, lte, sql } from 'drizzle-orm';
+import { parse } from 'useragent';
 import { db } from '@/db';
 import { sessions, users } from '@/db/schemas';
 import { genSnow } from '@/db/shared/snowflake';
@@ -51,6 +52,8 @@ export abstract class SessionService {
 	}
 
 	public static async signUp({
+		ip,
+		agent,
 		body: { name, code, email, ...options },
 	}: SessionModel.SignUpOptions) {
 		const REDIS_KEY = `codes:${email}:otp`;
@@ -83,8 +86,10 @@ export abstract class SessionService {
 				throw exception('Bad Request', ErrorCode.InvalidCredentials);
 
 			await tx.insert(sessions).values({
+				ip,
 				userId: id,
 				hash: refresh.hash,
+				...SessionService.useragent(agent),
 			});
 		});
 
@@ -107,6 +112,7 @@ export abstract class SessionService {
 
 	public static async signIn({
 		ip,
+		agent,
 		body: { email, password },
 	}: SessionModel.SignInOptions) {
 		const MAX_CONNECTED_DEVICES_PER_USER = 5;
@@ -133,11 +139,7 @@ export abstract class SessionService {
 		if (user.sessionCount >= MAX_CONNECTED_DEVICES_PER_USER)
 			throw exception('Bad Request', ErrorCode.SessionsLimitReached);
 
-		const isPasswordMatch = await Bun.password.verify(
-			password,
-			user.password,
-			'argon2id',
-		);
+		const isPasswordMatch = await Bun.password.verify(password, user.password);
 
 		if (!isPasswordMatch)
 			throw exception('Bad Request', ErrorCode.PasswordMismatch);
@@ -150,8 +152,10 @@ export abstract class SessionService {
 		await Promise.all([
 			db.insert(sessions).values({
 				id,
+				ip,
 				userId: user.id,
 				hash: refresh.hash,
+				...SessionService.useragent(agent),
 			}),
 			transporter.sendMail({
 				to: email,
@@ -162,15 +166,21 @@ export abstract class SessionService {
 		]);
 
 		return {
-			user: { id: String(user.id) },
 			session: {
 				access,
 				refresh: refresh.token,
 			},
+			user: { id: String(user.id) },
 		};
 	}
 
 	public static async sweep({ userId }: SessionModel.SweepOptions) {
+		if (!userId) {
+			await db.delete(sessions).where(lte(sessions.expiresAt, new Date()));
+
+			return;
+		}
+
 		const MAX_CONNECTED_DEVICES_PER_USER = 5;
 
 		await db.delete(sessions).where(
@@ -183,5 +193,26 @@ export abstract class SessionService {
       				LIMIT ${MAX_CONNECTED_DEVICES_PER_USER}
     			)`,
 		);
+	}
+
+	private static useragent(header?: string) {
+		if (!header) return;
+
+		const agent = parse(header);
+		const device = agent.device.toString();
+
+		return {
+			agent: agent.toAgent(),
+			device: device !== 'Other 0.0.0' ? device : agent.os.toString(),
+		};
+	}
+
+	public static async update({ id, userId, body }: SessionModel.UpdateOptions) {
+		const { rowCount } = await db
+			.update(sessions)
+			.set(body)
+			.where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
+
+		if (!rowCount) throw exception('Not Found', ErrorCode.UnknownSession);
 	}
 }

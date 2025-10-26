@@ -29,11 +29,17 @@ export abstract class UserService {
 				},
 			},
 			where: eq(users.id, id),
-			columns: { id: false, password: false, passwordResetRequestedAt: false },
+			columns: { id: false, password: false },
 		});
 
 		if (!user) throw exception('Not Found', ErrorCode.UnknownSession);
 
-		return user;
+		return {
+			...user,
+			sessions: user.sessions.map(({ id, ...session }) => ({
+				...session,
+				id: String(id),
+			})),
+		};
 	}
 }

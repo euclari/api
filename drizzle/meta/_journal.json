@@ -15,6 +15,13 @@
       "when": 1761346797116,
       "tag": "0001_youthful_golden_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1761482694571,
+      "tag": "0002_plain_rachel_grey",
+      "breakpoints": true
     }
   ]
 }

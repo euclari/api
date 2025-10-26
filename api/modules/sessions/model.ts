@@ -15,6 +15,7 @@ export namespace SessionModel {
 
 	export interface SignInOptions {
 		ip?: string;
+		agent?: string;
 		body: typeof SIGN_IN_SCHEMA.static;
 	}
 
@@ -44,11 +45,21 @@ export namespace SessionModel {
 		}),
 	]);
 
-	export interface SignUpOptions {
+	export interface SignUpOptions extends Omit<SignInOptions, 'body'> {
 		body: typeof SIGN_UP_SCHEMA.static;
 	}
 
 	export interface SweepOptions {
+		userId?: bigint;
+	}
+
+	export const UPDATE_SCHEMA = t.Object({
+		slug: t.Nullable(t.String({ minLength: 5, maxLength: 26 })),
+	});
+
+	export interface UpdateOptions {
+		id: bigint;
 		userId: bigint;
+		body: typeof UPDATE_SCHEMA.static;
 	}
 }

@@ -36,8 +36,12 @@ export const route = (elysia: typeof app) =>
 			})
 			.post(
 				'/signup',
-				async ({ body, cookie }) => {
-					const { user, session } = await SessionService.signUp({ body });
+				async ({ body, cookie, server, headers, request }) => {
+					const { user, session } = await SessionService.signUp({
+						body,
+						agent: headers['user-agent'],
+						ip: server?.requestIP(request)?.address,
+					});
 
 					const SEVEN_DAYS_IN_SEC = 604800;
 					const isProduction = !IS_DEVELOPMENT;
@@ -65,9 +69,10 @@ export const route = (elysia: typeof app) =>
 			)
 			.post(
 				'',
-				async ({ body, cookie, server, request }) => {
+				async ({ body, cookie, server, headers, request }) => {
 					const { user, session } = await SessionService.signIn({
 						body,
+						agent: headers['user-agent'],
 						ip: server?.requestIP(request)?.address,
 					});
 
@@ -93,6 +98,15 @@ export const route = (elysia: typeof app) =>
 				},
 				{
 					body: SessionModel.SIGN_IN_SCHEMA,
+				},
+			)
+			.patch(
+				'/:id',
+				({ body, params: { id }, user: { id: userId } }) =>
+					SessionService.update({ body, userId, id: BigInt(id) }),
+				{
+					secure: true,
+					body: SessionModel.UPDATE_SCHEMA,
 				},
 			),
 	);
