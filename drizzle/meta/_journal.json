@@ -1,27 +1,34 @@
 {
-  "version": "7",
-  "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1761310858479,
-      "tag": "0000_right_wiccan",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1761346797116,
-      "tag": "0001_youthful_golden_guardian",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1761482694571,
-      "tag": "0002_plain_rachel_grey",
-      "breakpoints": true
-    }
-  ]
+	"version": "7",
+	"dialect": "postgresql",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "7",
+			"when": 1761310858479,
+			"tag": "0000_right_wiccan",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "7",
+			"when": 1761346797116,
+			"tag": "0001_youthful_golden_guardian",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "7",
+			"when": 1761482694571,
+			"tag": "0002_plain_rachel_grey",
+			"breakpoints": true
+		},
+		{
+			"idx": 3,
+			"version": "7",
+			"when": 1761489448670,
+			"tag": "0003_supreme_nocturne",
+			"breakpoints": true
+		}
+	]
 }

@@ -1,8 +1,10 @@
 import { relations } from 'drizzle-orm';
-import { sessions, users } from './schemas';
+import { follows, sessions, users } from './schemas';
 
 const user = relations(users, ({ many }) => ({
 	sessions: many(sessions),
+	following: many(follows, { relationName: 'user_following' }),
+	followers: many(follows, { relationName: 'user_followers' }),
 }));
 
 const session = relations(sessions, ({ one }) => ({
@@ -12,4 +14,17 @@ const session = relations(sessions, ({ one }) => ({
 	}),
 }));
 
-export { user, session };
+const follow = relations(follows, ({ one }) => ({
+	follower: one(users, {
+		references: [users.id],
+		fields: [follows.followerId],
+		relationName: 'user_following',
+	}),
+	following: one(users, {
+		references: [users.id],
+		fields: [follows.followingId],
+		relationName: 'user_followers',
+	}),
+}));
+
+export { user, follow, session };

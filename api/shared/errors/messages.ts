@@ -18,6 +18,9 @@ export enum ErrorCode {
 
 	// Connections
 	UnknownConnection = 3001,
+
+	CannotFollowThisUser = 4001,
+	UnknownFollow,
 }
 
 export const ERROR_MESSAGES: Record<ErrorCode, string> = {
@@ -40,4 +43,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
 	[ErrorCode.ExpiredSession]: 'Your session expired',
 
 	[ErrorCode.UnknownConnection]: 'Unknown connection',
+
+	[ErrorCode.CannotFollowThisUser]: 'You cannot follow this user',
+	[ErrorCode.UnknownFollow]: 'Unknown follow',
 };

@@ -1,0 +1,21 @@
+import { index, pgTable, uniqueIndex } from 'drizzle-orm/pg-core';
+import { snowflake } from '../shared/snowflake';
+import { users } from './users';
+
+export const follows = pgTable(
+	'followers',
+	{
+		id: snowflake({ type: 'primary' }),
+		followerId: snowflake({ type: 'foreign' }).references(() => users.id, {
+			onDelete: 'cascade',
+		}),
+		followingId: snowflake({ type: 'foreign' }).references(() => users.id, {
+			onDelete: 'cascade',
+		}),
+	},
+	({ id, followerId, followingId }) => [
+		index('follows_followerId_id_idx').on(followerId, id),
+		index('follows_followingId_id_idx').on(followingId, id),
+		uniqueIndex('follows_follower_following_idx').on(followerId, followingId),
+	],
+);
