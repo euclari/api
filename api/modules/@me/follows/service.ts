@@ -1,4 +1,4 @@
-import { and, desc, eq, lt } from 'drizzle-orm';
+import { and, desc, eq, lt, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { follows, users } from '@/db/schemas';
 import { ErrorCode, exception } from '@/shared/errors';
@@ -12,15 +12,29 @@ export abstract class FollowService {
 		if (userId === targetId)
 			throw exception('Conflict', ErrorCode.CannotFollowThisUser);
 
-		const { rowCount } = await db
-			.insert(follows)
-			.values({
-				followerId: userId,
-				followingId: targetId,
-			})
-			.onConflictDoNothing();
+		await db.transaction(async (tx) => {
+			const { rowCount } = await tx
+				.insert(follows)
+				.values({
+					followerId: userId,
+					followingId: targetId,
+				})
+				.onConflictDoNothing();
 
-		if (!rowCount) throw exception('Conflict', ErrorCode.CannotFollowThisUser);
+			if (!rowCount)
+				throw exception('Conflict', ErrorCode.CannotFollowThisUser);
+
+			await Promise.all([
+				tx
+					.update(users)
+					.set({ followersCount: sql`${users.followersCount} + 1` })
+					.where(eq(users.id, targetId)),
+				tx
+					.update(users)
+					.set({ followingCount: sql`${users.followingCount} + 1` })
+					.where(eq(users.id, userId)),
+			]);
+		});
 	}
 
 	public static async unfollow({
@@ -30,13 +44,29 @@ export abstract class FollowService {
 		if (userId === targetId)
 			throw exception('Not Found', ErrorCode.UnknownFollow);
 
-		const { rowCount } = await db
-			.delete(follows)
-			.where(
-				and(eq(follows.followerId, userId), eq(follows.followingId, targetId)),
-			);
+		await db.transaction(async (tx) => {
+			const { rowCount } = await tx
+				.delete(follows)
+				.where(
+					and(
+						eq(follows.followerId, userId),
+						eq(follows.followingId, targetId),
+					),
+				);
 
-		if (!rowCount) throw exception('Not Found', ErrorCode.UnknownFollow);
+			if (!rowCount) throw exception('Not Found', ErrorCode.UnknownFollow);
+
+			await Promise.all([
+				tx
+					.update(users)
+					.set({ followersCount: sql`${users.followersCount} - 1` })
+					.where(eq(users.id, targetId)),
+				tx
+					.update(users)
+					.set({ followingCount: sql`${users.followingCount} - 1` })
+					.where(eq(users.id, userId)),
+			]);
+		});
 	}
 
 	public static async followers({
@@ -63,10 +93,7 @@ export abstract class FollowService {
 		const nextCursor = data[data.length - 1]?.id;
 
 		return {
-			cursor: {
-				persist: data.length > MAX_USERS_PER_VIEW,
-				next: nextCursor ? String(nextCursor) : null,
-			},
+			cursor: nextCursor ? String(nextCursor) : null,
 			data: data.map(({ id, name }) => ({ name, id: String(id) })),
 		};
 	}

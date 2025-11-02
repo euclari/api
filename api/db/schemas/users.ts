@@ -5,7 +5,7 @@ const ARGON2ID_LENGTH = 118;
 
 export const users = pgTable(
 	'users',
-	({ char, jsonb, varchar, boolean, timestamp }) => ({
+	({ char, jsonb, varchar, boolean, integer, timestamp }) => ({
 		avatar: char({ length: 16 }),
 		banner: char({ length: 16 }),
 		bio: varchar({ length: 256 }),
@@ -28,6 +28,9 @@ export const users = pgTable(
 			>()
 			.notNull()
 			.default([]),
+
+		followersCount: integer().default(0),
+		followingCount: integer().default(0),
 	}),
 	({ birthday }) => [index('users_birthday_index').on(birthday)],
 );
