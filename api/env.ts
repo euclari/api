@@ -29,6 +29,9 @@ const ENV_SCHEMA = t.Object({
 	S3_ACCESS_KEY_ID: t.String(),
 	S3_SECRET_ACCESS_KEY: t.String(),
 	S3_ENDPOINT: t.String({ format: 'uri' }),
+
+	// Git
+	GIT_COMMIT: t.Optional(t.String()),
 });
 
 export const env = Parse(ENV_SCHEMA, process.env);

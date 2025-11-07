@@ -16,7 +16,10 @@ export const createApp = () =>
 			maxRequestBodySize: SIXTY_FOUR_KB_IN_BYTES,
 		},
 	})
-		.onBeforeHandle(({ set, headers, request }) => {
+		.state('requests', 0)
+		.onBeforeHandle(({ set, store, headers, request }) => {
+			store.requests += 1;
+
 			if (IS_DEVELOPMENT || request.method === 'OPTIONS') return;
 
 			set.headers = CORE_HEADERS;
@@ -24,7 +27,7 @@ export const createApp = () =>
 			if (headers['content-type'] !== 'application/json')
 				return exception('Bad Request', ErrorCode.InvalidContentType);
 		})
-		.decorate('readyAt', Date.now())
+		.decorate('since', Date.now())
 		.use(secure)
 		.use(docs())
 		.use(
