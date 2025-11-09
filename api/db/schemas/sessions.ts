@@ -22,7 +22,7 @@ export const sessions = pgTable(
 		),
 	}),
 	({ userId, expiresAt }) => [
-		index('session_user_id_idx').on(userId),
-		index('session_expires_idx').on(expiresAt),
+		index('sessions_user_id_index').on(userId),
+		index('sessions_expires_index').on(expiresAt),
 	],
 );

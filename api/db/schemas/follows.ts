@@ -14,8 +14,8 @@ export const follows = pgTable(
 		}),
 	},
 	({ id, followerId, followingId }) => [
-		index('follows_followerId_id_idx').on(followerId, id),
-		index('follows_followingId_id_idx').on(followingId, id),
-		uniqueIndex('follows_follower_following_idx').on(followerId, followingId),
+		index('follows_followerId_id_index').on(followerId, id),
+		index('follows_followingId_id_index').on(followingId, id),
+		uniqueIndex('follows_follower_following_index').on(followerId, followingId),
 	],
 );
