@@ -1,6 +1,6 @@
 {
-	"id": "5ad3969f-295b-4504-8e97-e4cf692daa1a",
-	"prevId": "3883ef75-5cd6-4cef-8480-740f843ffa3b",
+	"id": "92131794-39ae-4b92-911f-d9b10b5f052b",
+	"prevId": "5ad3969f-295b-4504-8e97-e4cf692daa1a",
 	"version": "7",
 	"dialect": "postgresql",
 	"tables": {
@@ -166,7 +166,7 @@
 				},
 				"hash": {
 					"name": "hash",
-					"type": "char(64)",
+					"type": "text",
 					"primaryKey": false,
 					"notNull": true
 				},
@@ -238,15 +238,21 @@
 			"columns": {
 				"avatar": {
 					"name": "avatar",
-					"type": "char(16)",
+					"type": "text",
 					"primaryKey": false,
 					"notNull": false
 				},
 				"banner": {
 					"name": "banner",
-					"type": "char(16)",
+					"type": "text",
 					"primaryKey": false,
 					"notNull": false
+				},
+				"password": {
+					"name": "password",
+					"type": "text",
+					"primaryKey": false,
+					"notNull": true
 				},
 				"bio": {
 					"name": "bio",
@@ -275,12 +281,6 @@
 				"email": {
 					"name": "email",
 					"type": "varchar(155)",
-					"primaryKey": false,
-					"notNull": true
-				},
-				"password": {
-					"name": "password",
-					"type": "char(118)",
 					"primaryKey": false,
 					"notNull": true
 				},
