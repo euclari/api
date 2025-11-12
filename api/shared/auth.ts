@@ -6,7 +6,7 @@ import { env } from '@/env';
 
 const { JWT_SECRET } = env;
 
-const sign = createSigner({
+const signer = createSigner({
 	key: JWT_SECRET,
 	expiresIn: '15m',
 });
@@ -19,12 +19,12 @@ const AUTH_SCHEMA = t.Object({
 	id: t.Transform(t.BigInt()).Decode(String).Encode(BigInt),
 });
 
-type GenerateCredentialOptions = typeof AUTH_SCHEMA.static;
+type GenCredentialOptions = typeof AUTH_SCHEMA.static;
 
 export const hashRefresh = (refresh: string) =>
 	createHash('sha256').update(refresh).digest('hex');
 
-export const getCredentials = (data: GenerateCredentialOptions) => {
+export const genCredentials = (data: GenCredentialOptions) => {
 	const token = randomBytes(42).toHex();
 
 	return {
@@ -32,7 +32,7 @@ export const getCredentials = (data: GenerateCredentialOptions) => {
 			token,
 			hash: hashRefresh(token),
 		},
-		access: sign(data),
+		access: signer(data),
 	};
 };
 

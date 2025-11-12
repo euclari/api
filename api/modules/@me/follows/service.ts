@@ -90,10 +90,10 @@ export abstract class FollowService {
 			.orderBy(desc(follows.id))
 			.limit(MAX_USERS_PER_VIEW + 1);
 
-		const nextCursor = data[data.length - 1]?.id;
+		const next = data[data.length - 1]?.id;
 
 		return {
-			cursor: nextCursor ? String(nextCursor) : null,
+			cursor: next ? String(next) : null,
 			data: data.map(({ id, name }) => ({ name, id: String(id) })),
 		};
 	}
@@ -119,13 +119,10 @@ export abstract class FollowService {
 			.orderBy(desc(follows.id))
 			.limit(MAX_USERS_PER_VIEW + 1);
 
-		const nextCursor = data[data.length - 1]?.id;
+		const next = data[data.length - 1]?.id;
 
 		return {
-			cursor: {
-				persist: data.length > MAX_USERS_PER_VIEW,
-				next: nextCursor ? String(nextCursor) : null,
-			},
+			cursor: next ? String(next) : null,
 			data: data.map(({ id, name }) => ({ name, id: String(id) })),
 		};
 	}

@@ -5,7 +5,7 @@ import { FollowService } from '@/modules/@me/follows/service';
 export const route = (elysia: typeof app) =>
 	elysia.group('/users/:id', (follows) =>
 		follows
-			.guard({ secure: true })
+			.guard({ auth: true, tags: ['Users'] })
 			.get(
 				'/followers',
 				({ params: { id }, query: { cursor } }) =>

@@ -3,8 +3,8 @@ import { env } from '@/env';
 import { verify } from '@/shared/auth';
 import { ErrorCode, exception } from '@/shared/errors';
 
-export const secure = new Elysia({ name: 'secure' }).macro({
-	secure(type: true | 'admin') {
+export const auth = new Elysia({ name: 'auth' }).macro({
+	auth(type: true | 'admin') {
 		return {
 			async resolve({
 				cookie: {

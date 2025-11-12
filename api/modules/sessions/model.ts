@@ -1,65 +1,70 @@
-import { t } from 'elysia';
+import { type Static, t } from 'elysia';
+import { Email } from '@/shared/typebox/email';
+import { Snowflake } from '@/shared/typebox/snowflake';
 
 export namespace SessionModel {
-	export interface SignOutOptions {
+	export interface LogOutOptions {
+		id: bigint;
 		token: string;
-		userId: bigint;
-	}
-
-	const MAX_ARGON2ID_LENGTH = 118;
-
-	export const SIGN_IN_SCHEMA = t.Object({
-		email: t.String({ format: 'email', maxLength: 115 }),
-		password: t.String({ minLength: 8, maxLength: MAX_ARGON2ID_LENGTH }),
-	});
-
-	export interface SignInOptions {
-		ip?: string;
-		agent?: string;
-		body: typeof SIGN_IN_SCHEMA.static;
-	}
-
-	export const GEN_OTP_CODE_SCHEMA = t.Pick(SIGN_IN_SCHEMA, ['email']);
-
-	export interface GenerateOTPCodeOptions {
-		body: typeof GEN_OTP_CODE_SCHEMA.static;
-	}
-
-	export const SIGN_UP_SCHEMA = t.Intersect([
-		GEN_OTP_CODE_SCHEMA,
-		t.Object({
-			preferences: t.Object({
-				genres: t.Array(t.String(), { default: [] }),
-				rytm: t.Integer({ minimum: 1, maximum: 6, default: 2 }),
-				format: t.Optional(t.UnionEnum(['EBOOK', 'AUDIOBOOK', 'PHYSICAL'])),
-				authors: t.Array(
-					t.Transform(t.String()).Decode(BigInt).Encode(String),
-					{ default: [] },
-				),
-			}),
-			code: t.String({ pattern: '^[A-Z]{,7}$' }),
-			name: t.String({ pattern: '^(?!.*(?:clarice|admin))[a-z0-9_]{4,15}$' }),
-			password: t.String({
-				pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,52}$',
-			}),
-		}),
-	]);
-
-	export interface SignUpOptions extends Omit<SignInOptions, 'body'> {
-		body: typeof SIGN_UP_SCHEMA.static;
 	}
 
 	export interface SweepOptions {
-		userId?: bigint;
+		id?: bigint;
 	}
 
-	export const UPDATE_SCHEMA = t.Object({
-		slug: t.Nullable(t.String({ minLength: 5, maxLength: 26 })),
+	export interface RenewOptions extends Omit<LogInOptions, 'body'> {
+		id: bigint;
+		token: string;
+	}
+
+	export const LOG_IN_SCHEMA = t.Object({
+		email: Email('Current email of the users account'),
+		password: t.String({ minLength: 8, maxLength: 72 }),
 	});
 
-	export interface UpdateOptions {
-		id: bigint;
+	export interface LogInOptions {
+		ip?: string;
+		agent?: string;
+		body: typeof LOG_IN_SCHEMA.static;
+	}
+
+	export const REMOVE_SESSION_PARAMS = t.Object({
+		id: t.Transform(t.String()).Decode(BigInt).Encode(String),
+	});
+
+	export interface RemoveOptions extends Static<typeof REMOVE_SESSION_PARAMS> {
 		userId: bigint;
-		body: typeof UPDATE_SCHEMA.static;
+	}
+
+	export const GEN_OTP_CODE_SCHEMA = t.Object({
+		email: Email('An email to send the OTP code to verify the account'),
+	});
+
+	export interface GenOTPCodeOptions {
+		body: typeof GEN_OTP_CODE_SCHEMA.static;
+	}
+
+	export const SIGN_UP_SCHEMA = t.Object({
+		code: t.String(),
+		name: t.String({ pattern: '^(?!.*(?:clarice|admin))[a-z0-9_]{4,30}$' }),
+		password: t.String({
+			pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,128}$',
+		}),
+		email: Email('The email used before in the OTP code'),
+		preferences: t.Partial(
+			t.Object({
+				rytm: t.Integer({ minimum: 1, maximum: 6 }),
+				// TODO: Add genres enum later
+				genres: t.Array(t.String(), { maxItems: 15 }),
+				authors: t.Array(Snowflake, { maxItems: 15 }),
+				format: t.UnionEnum(['EBOOK', 'AUDIOBOOK', 'PHYSICAL']),
+			}),
+		),
+	});
+
+	export interface SignUpOptions {
+		ip?: string;
+		agent?: string;
+		body: typeof SIGN_UP_SCHEMA.static;
 	}
 }

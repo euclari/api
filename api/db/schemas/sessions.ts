@@ -7,13 +7,14 @@ const REFRESH_TOKEN_HASH_LEN = 64;
 
 export const sessions = pgTable(
 	'sessions',
-	({ char, varchar, timestamp }) => ({
+	({ text, char, varchar, timestamp }) => ({
 		id: snowflake({ type: 'primary' }),
 		userId: snowflake({ type: 'foreign' }).references(() => users.id, {
 			onDelete: 'cascade',
 		}),
+		city: text(),
+		region: text(),
 		ip: varchar({ length: 45 }),
-		slug: varchar({ length: 26 }),
 		agent: varchar({ length: 264 }),
 		device: varchar({ length: 64 }),
 		hash: char({ length: REFRESH_TOKEN_HASH_LEN }).unique().notNull(),
@@ -23,6 +24,6 @@ export const sessions = pgTable(
 	}),
 	({ userId, expiresAt }) => [
 		index('sessions_user_id_index').on(userId),
-		index('sessions_expires_index').on(expiresAt),
+		index('sessions_expires_at_index').on(expiresAt),
 	],
 );

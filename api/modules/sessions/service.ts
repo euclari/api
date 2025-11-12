@@ -1,13 +1,13 @@
 import { redis } from 'bun';
 import { and, eq, lte, sql } from 'drizzle-orm';
-import { parse } from 'useragent';
 import { db } from '@/db';
 import { sessions, users } from '@/db/schemas';
 import { genSnow } from '@/db/shared/snowflake';
 import { env } from '@/env';
-import { getCredentials } from '@/shared/auth';
-import { transporter } from '@/shared/email';
+import { genCredentials } from '@/shared/auth';
 import { ErrorCode, exception } from '@/shared/errors';
+import { identify } from '@/shared/identify';
+import { transporter } from '@/shared/transporter';
 import { createNewLoginEmail } from '@/templates/newLogin';
 import { createOTPCodeEmail } from '@/templates/OTP';
 import type { SessionModel } from './model';
@@ -15,40 +15,41 @@ import type { SessionModel } from './model';
 export abstract class SessionService {
 	public static async genOTPCode({
 		body: { email },
-	}: SessionModel.GenerateOTPCodeOptions) {
-		const REDIS_KEY = `codes:${email}:otp`;
-
-		const [
-			{
-				rows: [{ exists: isCredentialUsed }],
-			},
-			isEmailAlreadySent,
-		] = await Promise.all([
-			db.execute(
-				sql`SELECT EXISTS(SELECT 1 FROM users WHERE ${users.email} = ${email})`,
-			),
-			redis.exists(REDIS_KEY),
-		]);
+	}: SessionModel.GenOTPCodeOptions) {
+		const {
+			rows: [{ exists: isCredentialUsed }],
+		} = await db.execute(
+			sql`SELECT EXISTS(SELECT 1 FROM users WHERE $users.email= $email)`,
+		);
 
 		if (isCredentialUsed)
 			throw exception('Bad Request', ErrorCode.InvalidCredentials);
-		if (isEmailAlreadySent)
-			throw exception('Bad Request', ErrorCode.OTPCodeAlreadySent);
 
 		const FIVE_MIN_IN_SEC = '300';
 		const code = ['C', 'L', 'A', 'R', 'I', 'C', 'E']
 			.sort(() => Math.random() - 0.5)
 			.join('');
 
-		await Promise.all([
-			transporter.sendMail({
-				to: email,
-				from: `"Clarice" <hello@${env.DOMAIN}>`,
-				subject: 'Você está quase criando a sua conta',
-				html: createOTPCodeEmail({ code, name: email.split('@', 2)[0] }),
-			}),
-			redis.send('SET', [REDIS_KEY, code, 'EX', FIVE_MIN_IN_SEC, 'NX']),
+		const isEmailAlreadySent = await redis.send('SET', [
+			`codes:${email}:OTP`,
+			code,
+			'EX',
+			FIVE_MIN_IN_SEC,
+			'NX',
 		]);
+
+		if (isEmailAlreadySent)
+			throw exception('Bad Request', ErrorCode.OTPCodeAlreadySent);
+
+		// TODO: Add queue system
+		await transporter.sendMail({
+			to: email,
+			from: `"Clarice" <hello@${env.DOMAIN}>`,
+			subject: 'Você está quase criando a sua conta',
+			html: createOTPCodeEmail({ code, name: email.split('@', 2)[0] }),
+		});
+
+		return { code };
 	}
 
 	public static async signUp({
@@ -60,14 +61,22 @@ export abstract class SessionService {
 
 		const fetchedCode = await redis.get(REDIS_KEY);
 
-		if (!fetchedCode) throw exception('Not Found', ErrorCode.UnknownOTPCode);
 		if (fetchedCode !== code)
-			throw exception('Bad Request', ErrorCode.UnknownOTPCode);
+			throw exception('Not Found', ErrorCode.UnknownOTPCode);
 
 		const id = genSnow();
-		const password = await Bun.password.hash(options.password);
+		const FOUR_MB_IN_KIB = 4096;
 
-		const { access, refresh } = getCredentials({ id: String(id) });
+		const [credentials, password] = await Promise.all([
+			identify({ ip, header: agent }),
+			Bun.password.hash(options.password, {
+				timeCost: 1,
+				algorithm: 'argon2id',
+				memoryCost: FOUR_MB_IN_KIB,
+			}),
+		]);
+
+		const { access, refresh } = genCredentials({ id: String(id) });
 
 		await db.transaction(async (tx) => {
 			const { rowCount } = await tx
@@ -88,8 +97,8 @@ export abstract class SessionService {
 			await tx.insert(sessions).values({
 				ip,
 				userId: id,
+				...credentials,
 				hash: refresh.hash,
-				...SessionService.useragent(agent),
 			});
 		});
 
@@ -102,19 +111,19 @@ export abstract class SessionService {
 		};
 	}
 
-	public static async signOut({ token, userId }: SessionModel.SignOutOptions) {
+	public static async logOut({ id, token }: SessionModel.LogOutOptions) {
 		const { rowCount } = await db
 			.delete(sessions)
-			.where(and(eq(sessions.hash, token), eq(sessions.userId, userId)));
+			.where(and(eq(sessions.hash, token), eq(sessions.userId, id)));
 
 		if (!rowCount) throw exception('Not Found', ErrorCode.UnknownSession);
 	}
 
-	public static async signIn({
+	public static async logIn({
 		ip,
 		agent,
 		body: { email, password },
-	}: SessionModel.SignInOptions) {
+	}: SessionModel.LogInOptions) {
 		const MAX_CONNECTED_DEVICES_PER_USER = 5;
 
 		const [user] = await db
@@ -144,24 +153,23 @@ export abstract class SessionService {
 		if (!isPasswordMatch)
 			throw exception('Bad Request', ErrorCode.PasswordMismatch);
 
-		const id = genSnow();
+		const { access, refresh } = genCredentials({ id: String(user.id) });
 
-		// @ts-expect-error
-		const { access, refresh } = getCredentials({ id: user.id });
+		const id = genSnow();
 
 		await Promise.all([
 			db.insert(sessions).values({
-				id,
 				ip,
+				id,
 				userId: user.id,
 				hash: refresh.hash,
-				...SessionService.useragent(agent),
+				...(await identify({ ip, header: agent })),
 			}),
+			// TODO: Add queue system
 			transporter.sendMail({
 				to: email,
-				subject: 'Novo Login Detectado',
-				from: `"Clarice" <${env.DOMAIN}>`,
-				html: createNewLoginEmail({ ip, id, name: user.name }),
+				from: `"Clarice" <hello@${env.DOMAIN}>`,
+				html: createNewLoginEmail({ id, ip, name: user.name }),
 			}),
 		]);
 
@@ -174,44 +182,43 @@ export abstract class SessionService {
 		};
 	}
 
-	public static async sweep({ userId }: SessionModel.SweepOptions) {
-		if (!userId) {
-			await db.delete(sessions).where(lte(sessions.expiresAt, new Date()));
+	public static async sweep({ id }: SessionModel.SweepOptions) {
+		const where = id
+			? and(eq(users.id, id), lte(sessions.expiresAt, new Date()))
+			: lte(sessions.expiresAt, new Date());
 
-			return;
-		}
+		const { rowCount } = await db.delete(sessions).where(where);
 
-		const MAX_CONNECTED_DEVICES_PER_USER = 5;
-
-		await db.delete(sessions).where(
-			sql`id IN (
-      				SELECT id
-      				FROM ${sessions}
-      				WHERE ${sessions.userId} = ${userId}
-        			AND ${sessions.expiresAt} <= ${new Date()}
-      				ORDER BY ${sessions.expiresAt} ASC
-      				LIMIT ${MAX_CONNECTED_DEVICES_PER_USER}
-    			)`,
-		);
+		return rowCount;
 	}
 
-	private static useragent(header?: string) {
-		if (!header) return;
+	public static async renew({
+		id,
+		ip,
+		token,
+		agent,
+	}: SessionModel.RenewOptions) {
+		const { access, refresh } = genCredentials({ id: String(id) });
 
-		const agent = parse(header);
-		const device = agent.device.toString();
+		const SEVEN_DAYS_IN_MS = 6.048e8;
 
-		return {
-			agent: agent.toAgent(),
-			device: device !== 'Other 0.0.0' ? device : agent.os.toString(),
-		};
-	}
-
-	public static async update({ id, userId, body }: SessionModel.UpdateOptions) {
-		const { rowCount } = await db
+		await db
 			.update(sessions)
-			.set(body)
-			.where(and(eq(sessions.id, id), eq(sessions.userId, userId)));
+			.set({
+				ip,
+				hash: refresh.hash,
+				...(await identify({ ip, header: agent })),
+				expiresAt: new Date(Date.now() + SEVEN_DAYS_IN_MS),
+			})
+			.where(eq(sessions.hash, token));
+
+		return { access, refresh: refresh.token };
+	}
+
+	public static async remove({ id, userId }: SessionModel.RemoveOptions) {
+		const { rowCount } = await db
+			.delete(sessions)
+			.where(and(eq(sessions.userId, userId), eq(sessions.id, id)));
 
 		if (!rowCount) throw exception('Not Found', ErrorCode.UnknownSession);
 	}

@@ -1,8 +1,7 @@
-import { cron, Patterns } from '@elysiajs/cron';
 import { Elysia, ElysiaCustomStatusResponse } from 'elysia';
 import { env, IS_DEVELOPMENT } from '@/env';
-import { SessionService } from '@/modules/sessions/service';
-import { secure } from '@/plugins/auth';
+import { auth } from '@/plugins/auth';
+import { cron } from '@/plugins/cron';
 import { docs } from '@/plugins/docs';
 import { ErrorCode, exception } from '@/shared/errors';
 import { CORE_HEADERS } from './shared/headers';
@@ -13,8 +12,14 @@ export const createApp = () =>
 	new Elysia({
 		name: env.APP_NAME,
 		serve: {
+			development: IS_DEVELOPMENT,
 			maxRequestBodySize: SIXTY_FOUR_KB_IN_BYTES,
 		},
+		aot: true,
+		normalize: false,
+		encodeSchema: false,
+		sanitize: (value) => value.trim(),
+		allowUnsafeValidationDetails: IS_DEVELOPMENT,
 	})
 		.state('requests', 0)
 		.onBeforeHandle(({ set, store, headers, request }) => {
@@ -28,30 +33,16 @@ export const createApp = () =>
 				return exception('Bad Request', ErrorCode.InvalidContentType);
 		})
 		.decorate('since', Date.now())
-		.use(secure)
-		.use(docs())
-		.use(
-			cron({
-				catch: true,
-				name: 'cron',
-				async run() {
-					await SessionService.sweep({});
-				},
-				pattern: Patterns.EVERY_HOUR,
-			}),
-		)
+		.use(auth)
+		.use(cron)
+		.use(docs)
 		.error({
 			FAST_JWT_EXPIRED: Error,
 			FAST_JWT_MALFORMED: Error,
 		})
-		.onError(({ set, code, error }) => {
+		.onError(({ code, error }) => {
 			if (IS_DEVELOPMENT) console.error(error);
-
-			if (error instanceof ElysiaCustomStatusResponse) {
-				set.status = error.code;
-
-				return error.response;
-			}
+			if (error instanceof ElysiaCustomStatusResponse) return error;
 
 			switch (code) {
 				case 'NOT_FOUND':

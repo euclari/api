@@ -25,10 +25,10 @@ const ENV_SCHEMA = t.Object({
 	SMTP_PASSWORD: t.String(),
 	SMTP_SECURE: t.BooleanString({ default: false }),
 
-	// S3 Service (MinIO)
-	S3_ACCESS_KEY_ID: t.String(),
-	S3_SECRET_ACCESS_KEY: t.String(),
-	S3_ENDPOINT: t.String({ format: 'uri' }),
+	// MinIO
+	MINIO_ACCESS_KEY_ID: t.String(),
+	MINIO_SECRET_ACCESS_KEY: t.String(),
+	MINIO_ENDPOINT: t.String({ format: 'uri' }),
 
 	// Git
 	GIT_COMMIT: t.Optional(t.String()),

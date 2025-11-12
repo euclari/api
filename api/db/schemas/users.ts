@@ -11,7 +11,7 @@ export const users = pgTable(
 		bio: varchar({ length: 256 }),
 		pronouns: varchar({ length: 15 }),
 		id: snowflake({ type: 'primary' }),
-		name: varchar({ length: 15 }).unique().notNull(),
+		name: varchar({ length: 30 }).unique().notNull(),
 		email: varchar({ length: 155 }).unique().notNull(),
 		password: char({ length: ARGON2ID_LENGTH }).notNull(),
 		font: jsonb().$type<{ size?: number; name?: string }>().default({}),
@@ -22,12 +22,6 @@ export const users = pgTable(
 			enum: ['fr', 'de', 'en', 'pt', 'es'],
 		}),
 		birthday: timestamp({ withTimezone: true }),
-		connections: jsonb()
-			.$type<
-				{ type: 'X' | 'IG' | 'YTB' | 'SPOTIFY' | 'DOMAIN'; id: string }[]
-			>()
-			.notNull()
-			.default([]),
 
 		followersCount: integer().default(0),
 		followingCount: integer().default(0),

@@ -6,6 +6,7 @@ export const route = (elysia: typeof app) =>
 		'/health',
 		({ since, store: { requests } }) => HealthService.get({ since, requests }),
 		{
-			secure: 'admin',
+			auth: 'admin',
+			tags: ['API'],
 		},
 	);

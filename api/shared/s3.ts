@@ -11,7 +11,7 @@ interface CreatePresignedURLOptions {
 export const s3 = {
 	sign({ key, bucket, expires = 15 }: CreatePresignedURLOptions) {
 		const hash = randomBytes(16).toHex();
-		const { host, protocol } = new URL(env.S3_ENDPOINT);
+		const { host, protocol } = new URL(env.MINIO_ENDPOINT);
 
 		const { path } = sign(
 			{
@@ -22,8 +22,8 @@ export const s3 = {
 				path: `/${bucket}/${key}/${hash}.webp?X-Amz-Expires=${expires}`,
 			},
 			{
-				accessKeyId: env.S3_ACCESS_KEY_ID,
-				secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+				accessKeyId: env.MINIO_ACCESS_KEY_ID,
+				secretAccessKey: env.MINIO_SECRET_ACCESS_KEY,
 			},
 		);
 
@@ -33,7 +33,7 @@ export const s3 = {
 		};
 	},
 	async delete({ key, bucket }: Omit<CreatePresignedURLOptions, 'expires'>) {
-		const { host, protocol } = new URL(env.S3_ENDPOINT);
+		const { host, protocol } = new URL(env.MINIO_ENDPOINT);
 
 		const { headers } = sign(
 			{
@@ -43,8 +43,8 @@ export const s3 = {
 				path: `/${bucket}/${key}.webp`,
 			},
 			{
-				accessKeyId: env.S3_ACCESS_KEY_ID,
-				secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+				accessKeyId: env.MINIO_ACCESS_KEY_ID,
+				secretAccessKey: env.MINIO_SECRET_ACCESS_KEY,
 			},
 		);
 
